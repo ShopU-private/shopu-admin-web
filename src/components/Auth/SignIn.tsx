@@ -1,13 +1,17 @@
+
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Lock, Phone, Key } from 'lucide-react';
+
+
 
 const SignIn: React.FC = () => {
-  const { login, isAuthenticated } = useAuth();
-  const [email, setEmail] = useState('admin@dashboard.com');
-  const [password, setPassword] = useState('admin123');
-  const [showPassword, setShowPassword] = useState(false);
+  const { sendOtp, verifyOtp, isAuthenticated, otpSessionId, phoneNumber } = useAuth();
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const phoneRegex = /^[6-9]\d{9}$/;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -15,17 +19,46 @@ const SignIn: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!phoneRegex.test(phone)) {
+      setError('Please enter a valid 10-digit phone number.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await sendOtp(phone);
+      if (res.success) {
+        setStep('otp');
+      } else {
+        setError(res.error || 'Failed to send OTP');
+      }
+    } catch {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
     try {
-      const success = await login(email, password);
-      if (!success) {
-        setError('Invalid email or password');
+      if (!otpSessionId || !phoneNumber) {
+        setError('Session expired. Please try again.');
+        setStep('phone');
+        return;
       }
-    } catch (err) {
+      const success = await verifyOtp(otp);
+      if (!success) {
+        setError('Invalid OTP');
+      }
+      // On success, user will be redirected by isAuthenticated
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -43,70 +76,93 @@ const SignIn: React.FC = () => {
           <p className="text-gray-600 mt-2">Sign in to your admin dashboard</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your email"
-                required
-              />
+        {step === 'phone' && (
+          <form onSubmit={handleSendOtp} className="space-y-6">
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number
+              </label>
+              <div className="relative">
+                <Phone className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => {
+                    // Only allow numbers, max 10 digits
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setPhone(val);
+                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your 10-digit phone number"
+                  required
+                />
+              </div>
             </div>
-          </div>
+            {error && (
+              <div className="text-red-600 text-sm text-center bg-red-50 py-2 px-4 rounded-lg">{error}</div>
+            )}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? 'Sending OTP...' : 'Send OTP'}
+            </button>
+          </form>
+        )}
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+        {step === 'otp' && (
+          <form onSubmit={handleVerifyOtp} className="space-y-6">
+            <div>
+              <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                Enter OTP
+              </label>
+              <div className="relative">
+                <Key className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{4}"
+                  maxLength={4}
+                  value={otp}
+                  onChange={(e) => {
+                    // Only allow numbers, max 4 digits
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setOtp(val);
+                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter 4-digit OTP"
+                  required
+                />
+              </div>
             </div>
-          </div>
-
-          {error && (
-            <div className="text-red-600 text-sm text-center bg-red-50 py-2 px-4 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Demo credentials:</p>
-          <p><strong>Email:</strong> admin@dashboard.com</p>
-          <p><strong>Password:</strong> admin123</p>
-        </div>
+            {phoneNumber && (
+              <div className="text-center text-gray-500 text-xs mb-2">OTP sent to {phoneNumber}</div>
+            )}
+            {error && (
+              <div className="text-red-600 text-sm text-center bg-red-50 py-2 px-4 rounded-lg">{error}</div>
+            )}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? 'Verifying...' : 'Verify OTP'}
+            </button>
+            <button
+              type="button"
+              className="w-full mt-2 text-blue-600 hover:underline"
+              onClick={() => { setStep('phone'); setError(''); setOtp(''); }}
+            >
+              Change phone number
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

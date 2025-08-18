@@ -1,27 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
-import { User } from '../../types';
-import { mockUsers } from '../../data/mockData';
+// UserListResponse type for API response
+type UserListResponse = {
+  id: string;
+  phoneNumber: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  lastSignedAt?: string;
+};
+import { useAuth } from '../../contexts/AuthContext';
 
 interface UsersListProps {
   onCreateUser: () => void;
 }
 
+const PAGE_SIZE = 20;
+
 const UsersList: React.FC<UsersListProps> = ({ onCreateUser }) => {
-  const [users] = useState<User[]>(mockUsers);
+  const { fetchWithAuth } = useAuth();
+  const [users, setUsers] = useState<UserListResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0); // Start from 1
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [prompt, setPrompt] = useState<string | null>(null);
+
+
+useEffect(() => {
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const url = `/api/v1/users/all/${page}/${PAGE_SIZE}`;
+      const data = await fetchWithAuth(
+        url, { method: 'GET' });
+      console.log(data?.data?.content)
+      setUsers(data?.data?.content || []);
+      setTotalPages(data?.data?.totalPages || 1);
+    } catch (err) {
+      console.log("Error fetching users", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchUsers();
+}, [page]);
+
+
 
   const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.phoneNumber?.includes(searchTerm))
   );
 
-  const getStatusColor = (status: string) => {
-    return status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-  };
-
+  
   const getRoleColor = (role: string) => {
-    return role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800';
+    return role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -54,80 +90,123 @@ const UsersList: React.FC<UsersListProps> = ({ onCreateUser }) => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
+          {loading ? (
+            <div className="p-6 text-center text-gray-500">Loading users...</div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Signed
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
                         <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                           <span className="text-gray-600 font-medium">
-                            {user.name.charAt(0)}
+                            {user.name?.charAt(0) || user.phoneNumber?.slice(0, 2)}
                           </span>
                         </div>
-                      )}
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.name || user.phoneNumber}</div>
+                          <div className="text-sm text-gray-500">{user.email || user.phoneNumber}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.status)}`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center space-x-2">
-                      <button className="text-blue-600 hover:text-blue-800">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="text-green-600 hover:text-green-800">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="text-red-600 hover:text-red-800">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full  
+                       ${getRoleColor(user.role)} `}>
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800`}>
+                        Active
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.lastSignedAt ? new Date(user.lastSignedAt).toLocaleDateString() : ''}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center space-x-2">
+                        <button className="text-blue-600 hover:text-blue-800">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                          disabled={user.role === 'ADMIN'}
+                          onClick={user.role === 'ADMIN' ? () => setPrompt('You are not able to do any activity with this user') : undefined}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                          disabled={user.role === 'ADMIN'}
+                          onClick={user.role === 'ADMIN' ? () => setPrompt('You are not able to do any activity with this user') : undefined}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        {/* Prompt Modal */}
+        {prompt && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center">
+              <p className="mb-4 text-gray-800">{prompt}</p>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => setPrompt(null)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Pagination Controls */}
+        <div className="flex justify-end items-center gap-2 p-4">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page < 1}
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span>Page {page + 1} of {totalPages}</span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page + 1 == totalPages || users.length === 0}
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

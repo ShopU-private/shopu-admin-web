@@ -12,7 +12,7 @@ const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar }) => {
 
   const handleLogout = () => {
     logout();
-    setShowProfileMenu(false);
+    setShowProfileMenu(true);
   };
 
   return (
@@ -40,7 +40,7 @@ const Topbar: React.FC<TopbarProps> = ({ onToggleSidebar }) => {
           <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
             <Bell className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-            3
+            1
             </span>
           </button>
 
