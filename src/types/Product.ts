@@ -9,6 +9,34 @@ export interface ProductListResponse {
   createdAt: string;
 }
 
+export interface ProductCreateRequest {
+  name: string;
+  brand?: string;
+  manufacturerName: string;
+  category: string;
+  dosageForm: string;
+  packSize: string;
+  prescriptionRequired: boolean;
+  description: string;
+  composition?: CompositionItem[];
+  ingredients: string;
+  uses?: string;
+  benefits?: string;
+  howToUse?: string;
+  sideEffects?: string;
+  precautions?: string;
+  safetyAdvice?: string;
+  safetyInformation?: string;
+  storageInfo?: string;
+  disclaimer?: string;
+  hsnCode?: string;
+  manufacturerDetails?: string; // ISO date string
+  price: number;
+  discount: number;
+  images: string[];
+  stock: number;
+} 
+
 export interface CompositionItem{
   name: string;
   strength: string;
@@ -35,13 +63,17 @@ export enum DosageForm {
   INJECTION = "INJECTION",
   OINTMENT = "OINTMENT",
   CREAM = "CREAM",
-  DROPS = "DROPS",
+  DROP = "DROPS",
   INHALER = "INHALER",
   POWDER = "POWDER",
   SPRAY = "SPRAY",
   LIQUID = "LIQUID",
   STANDARD = "STANDARD",
-  OTHER = "OTHER"
+  OTHER = "OTHER",
+  PESSARY = "PESSARY",
+  SUSPENSION = "SUSPENSION",
+  GEL = "GEL",
+  KIT = "KIT",
 }
 
 export interface Product {

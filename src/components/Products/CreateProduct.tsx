@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Category, CompositionItem, DosageForm } from '../../types/Product';
+import { Category, CompositionItem, DosageForm, ProductCreateRequest } from '../../types/Product';
+import { useAuth } from '../../contexts/AuthContext';
+import Snackbar from '../../utils/snackbar';
 
 interface CreateProductProps {
   onBack: () => void;
@@ -11,6 +13,15 @@ const dosageFormOptions = Object.values(DosageForm);
 const initialComposition: CompositionItem = { name: '', strength: '' };
 
 const CreateProduct: React.FC<CreateProductProps> = ({ onBack }) => {
+  const [snackbar, setSnackbar] = useState<{
+    message: string;
+    type: "success" | "error" | "warning";
+  } | null>(null);
+
+  const showSnackbar = (message: string, type: "success" | "error" | "warning") => {
+    setSnackbar({ message, type });
+  };
+
   const [formData, setFormData] = useState<{
     name: string;
     brand: string;
@@ -77,6 +88,7 @@ const CreateProduct: React.FC<CreateProductProps> = ({ onBack }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { fetchWithAuth } = useAuth();
 
   // Composition logic
   const canAddComposition = formData.category !== Category.HEALTHCARE;
@@ -139,16 +151,75 @@ const CreateProduct: React.FC<CreateProductProps> = ({ onBack }) => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Creating product:', formData);
-      setIsLoading(false);
-      onBack();
-    }, 1000);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+
+  // Validation: check required fields
+  if (
+    !formData.name ||
+    !formData.manufacturerName ||
+    !formData.category ||
+    !formData.dosageForm ||
+    !formData.packSize ||
+    formData.prescriptionRequired === undefined ||
+    !formData.description ||
+    !formData.ingredients ||
+    !formData.price ||
+    !formData.discount ||
+    !formData.stock
+  ) {
+    alert("Please fill all required fields before submitting.");
+    setIsLoading(false);
+    return;
+  }
+
+  // Prepare request body
+  const requestBody: ProductCreateRequest = {
+    name: formData.name,
+    brand: formData.brand,
+    manufacturerName: formData.manufacturerName,
+    category: formData.category,
+    dosageForm: formData.dosageForm,
+    packSize: formData.packSize,
+    prescriptionRequired: formData.prescriptionRequired,
+    description: formData.description,
+    composition: formData.composition,
+    ingredients: formData.ingredients,
+    uses: formData.uses,
+    benefits: formData.benefits,
+    howToUse: formData.howToUse,
+    sideEffects: formData.sideEffects,
+    precautions: formData.precautions,
+    safetyAdvice: formData.safetyAdvice,
+    safetyInformation: formData.safetyInformation,
+    storageInfo: formData.storageInfo,
+    disclaimer: formData.disclaimer,
+    hsnCode: formData.hsnCode,
+    manufacturerDetails: formData.manufacturerDetails,
+    price: Number(formData.price),
+    discount: Number(formData.discount),
+    images: formData.images,
+    stock: Number(formData.stock),
   };
+
+  try {
+    const res = await fetchWithAuth("/api/v1/products/add", {
+      method: "POST",
+      body: requestBody,
+    });
+    if (res?.success || res?.status === 201) {
+      showSnackbar("Product created successfully!", "success");
+    } else {
+      showSnackbar(res?.message || "Failed to create product.", "error");
+    }
+  } catch (err) {
+    showSnackbar("Error creating product.", "error");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   // Image upload handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -637,6 +708,7 @@ const CreateProduct: React.FC<CreateProductProps> = ({ onBack }) => {
             <button
               type="submit"
               disabled={isLoading}
+              onClick={handleSubmit}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
             >
               <span>{isLoading ? 'Creating...' : 'Create Product'}</span>

@@ -127,12 +127,11 @@ const SignIn: React.FC = () => {
                   id="otp"
                   type="text"
                   inputMode="numeric"
-                  pattern="[0-9]{4}"
-                  maxLength={4}
+                  maxLength={6}
                   value={otp}
                   onChange={(e) => {
                     // Only allow numbers, max 4 digits
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                     setOtp(val);
                   }}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -56,7 +56,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_BASE_URL = "https://shopu-app-569380346480.europe-west1.run.app";
+const API_BASE_URL = "http://localhost:8080";//"https://shopu-app-569380346480.europe-west1.run.app";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -66,11 +66,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Send OTP to phone number
   const sendOtp = async (phone: string): Promise<{ success: boolean; id?: string; error?: string }> => {
     try {
-      const url = `${API_BASE_URL}/sms/send-otp?phoneNumber=${encodeURIComponent(phone)}`;
+      const url = `${API_BASE_URL}/auth/send-otp?phoneNumber=${encodeURIComponent(phone)}`;
       const res = await fetch(url, {
         method: 'POST',
 
       });
+      console.log(res)
       if (!res.ok) {
         return { success: false, error: 'Failed to send OTP' };
       }
@@ -90,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const verifyOtp = async (otp: string): Promise<boolean> => {
     if (!otpSessionId || !phoneNumber) return false;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/admin-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

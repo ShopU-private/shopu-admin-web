@@ -7,6 +7,12 @@ import { ProductListResponse } from '../../types/Product';
 
 const PAGE_SIZE = 20;
 
+function truncateWords(text: string, maxWords: number): string {
+  const words = text.split(' ');
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(' ') + ' ...';
+}
+
 const Products: React.FC = () => {
   const { fetchWithAuth } = useAuth();
   const [products, setProducts] = useState<ProductListResponse[]>([]);
@@ -112,7 +118,9 @@ const Products: React.FC = () => {
                         )}
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500">{product.description}</div>
+                          <div className="text-sm text-gray-500">
+                            {truncateWords(product.description, 5)}
+                          </div>
                         </div>
                       </div>
                     </td>

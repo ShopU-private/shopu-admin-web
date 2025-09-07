@@ -20,7 +20,7 @@ const Orders: React.FC = () => {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const url = `/api/v1/order/all/${page}/${PAGE_SIZE}`;
+        const url = `/api/v1/order/all/web/${page}/${PAGE_SIZE}`;
         const data = await fetchWithAuth(url, { method: 'GET' });
         setOrders(data?.data?.content || []);
         setTotalPages(data?.data?.totalPages || 1);

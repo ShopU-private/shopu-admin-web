@@ -35,7 +35,6 @@ useEffect(() => {
       const url = `/api/v1/users/all/${page}/${PAGE_SIZE}`;
       const data = await fetchWithAuth(
         url, { method: 'GET' });
-      console.log(data?.data?.content)
       setUsers(data?.data?.content || []);
       setTotalPages(data?.data?.totalPages || 1);
     } catch (err) {

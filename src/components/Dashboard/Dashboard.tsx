@@ -1,12 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import StatsCard from './StatsCard';
 import { mockStats, mockChartData } from '../../data/mockData';
 import { FilterPeriod } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<FilterPeriod>('1M');
+  const { fetchWithAuth } = useAuth();
+
+  // Add state for counts
+  const [counts, setCounts] = useState({
+    totalUsers: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+  });
+
+  // Add state for sales summary
+  const [salesSummary, setSalesSummary] = useState<{ totalSales: number; upcomingSales: number }>({
+    totalSales: 0,
+    upcomingSales: 0,
+  });
+
+  useEffect(() => {
+    // Fetch counts from API
+    const fetchCounts = async () => {
+      try {
+        const productRes = await fetchWithAuth('/api/v1/products/count', { method: 'GET' });
+        const userRes = await fetchWithAuth('/api/v1/users/count', { method: 'GET' });
+        const orderRes = await fetchWithAuth('/api/v1/order/count', { method: 'GET' });
+
+        setCounts({
+          totalProducts: Number(productRes?.data ?? 0),
+          totalUsers: Number(userRes?.data ?? 0),
+          totalOrders: Number(orderRes?.data ?? 0),
+        });
+      } catch (err) {
+        setCounts({ totalUsers: 0, totalProducts: 0, totalOrders: 0 });
+      }
+    };
+
+    // Fetch sales summary from API
+    const fetchSalesSummary = async () => {
+      try {
+        const res = await fetchWithAuth('/api/v1/order/sale/summary', { method: 'GET' });
+        setSalesSummary({
+          totalSales: Number(res?.data?.totalSales ?? 0),
+          upcomingSales: Number(res?.data?.upcomingSales ?? 0),
+        });
+      } catch (err) {
+        setSalesSummary({ totalSales: 0, upcomingSales: 0 });
+      }
+    };
+
+    fetchCounts();
+    fetchSalesSummary();
+  }, [fetchWithAuth]);
 
   const periodOptions: { value: FilterPeriod; label: string }[] = [
     { value: '1M', label: 'Last 1 Month' },
@@ -30,7 +80,7 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Total Users"
-          value={mockStats.totalUsers.toLocaleString()}
+          value={counts.totalUsers.toLocaleString()}
           icon={Users}
           change="12%"
           changeType="positive"
@@ -38,7 +88,7 @@ const Dashboard: React.FC = () => {
         />
         <StatsCard
           title="Total Orders"
-          value={mockStats.totalOrders.toLocaleString()}
+          value={counts.totalOrders.toLocaleString()}
           icon={ShoppingCart}
           change="8%"
           changeType="positive"
@@ -46,15 +96,23 @@ const Dashboard: React.FC = () => {
         />
         <StatsCard
           title="Total Revenue"
-          value={`$${mockStats.totalRevenue.toLocaleString()}`}
+          value={`₹${salesSummary.totalSales.toLocaleString()}`}
           icon={DollarSign}
           change="15%"
           changeType="positive"
           color="bg-purple-500"
         />
         <StatsCard
+          title="Upcoming Revenue"
+          value={`₹${salesSummary.upcomingSales.toLocaleString()}`}
+          icon={DollarSign}
+          change="--"
+          changeType="positive"
+          color="bg-purple-400"
+        />
+        <StatsCard
           title="Total Products"
-          value={mockStats.totalProducts.toLocaleString()}
+          value={counts.totalProducts.toLocaleString()}
           icon={Package}
           change="3%"
           changeType="positive"
@@ -118,7 +176,7 @@ const Dashboard: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
+              <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']} />
               <Area
                 type="monotone"
                 dataKey="revenue"
