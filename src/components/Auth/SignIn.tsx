@@ -53,10 +53,11 @@ const SignIn: React.FC = () => {
         setStep('phone');
         return;
       }
-      const success = await verifyOtp(otp);
-      if (!success) {
-        setError('Invalid OTP');
-      }
+      const result = await verifyOtp(otp);
+
+      if (!result || result.status !== 200) {
+      setError(result?.message || 'Something went wrong. Please try again.');
+    }
       // On success, user will be redirected by isAuthenticated
     } catch {
       setError('An error occurred. Please try again.');

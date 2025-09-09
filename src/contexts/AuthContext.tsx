@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { AppResponse } from '../utils/appResponse';
 // Simple cookie helpers
 function setCookie(name: string, value: string, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
@@ -13,7 +14,6 @@ function getCookie(name: string) {
 function deleteCookie(name: string) {
   document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
 }
-
 
 interface AuthUser {
   id: string;
@@ -35,7 +35,7 @@ interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   sendOtp: (phone: string) => Promise<{ success: boolean; id?: string; error?: string }>;
-  verifyOtp: (otp: string) => Promise<boolean>;
+  verifyOtp: (otp: string) => Promise<AppResponse>;
   otpSessionId: string | null;
   phoneNumber: string | null;
   logout: () => void;
@@ -56,7 +56,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_BASE_URL = "https://shopu-app-569380346480.europe-west1.run.app";
+const API_BASE_URL = "http://localhost:8080"; //"https://shopu-app-569380346480.europe-west1.run.app";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -88,32 +88,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // OTP verification and login
-  const verifyOtp = async (otp: string): Promise<boolean> => {
-    if (!otpSessionId || !phoneNumber) return false;
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/admin-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber,
-          otp,
-          smsId: otpSessionId,
-        })
-      });
-      if (!res.ok) {
-        return false;
-      }
-      const response = await res.json();
-      if (response && response.status === 200 && response.data && response.data.token) {
-        setCookie('token', response.data.token);
-        setUser({ id: otpSessionId, phone: phoneNumber });
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
+ const verifyOtp = async (otp: string): Promise<AppResponse> => {
+  if (!otpSessionId || !phoneNumber) {
+    return { status: 400, message: "Session expired" , data: null};
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/admin-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber,
+        otp,
+        smsId: otpSessionId,
+      })
+    });
+
+    const response = await res.json();
+
+    if (res.ok && response?.status === 200 && response?.data?.token) {
+      setCookie('token', response.data.token);
+      setUser({ id: otpSessionId, phone: phoneNumber });
     }
-  };
+
+    return {
+      status: response?.status ?? res.status,
+      message: response?.message ?? res.statusText,
+      data: response?.data ?? null
+    };
+  } catch (err) {
+    return { status: 500, message: 'Something went wrong', data: null };
+  }
+};
+
 
  const logout = () => {
     setUser(null);
