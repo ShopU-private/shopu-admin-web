@@ -23,39 +23,36 @@ const Dashboard: React.FC = () => {
     upcomingSales: 0,
   });
 
+  // Track loading for refresh
+  const [loading, setLoading] = useState(false);
+
+  // Fetch all stats once or on refresh
+  const fetchAllStats = async () => {
+    setLoading(true);
+    try {
+      const productRes = await fetchWithAuth('/api/v1/products/count', { method: 'GET' });
+      const userRes = await fetchWithAuth('/api/v1/users/count', { method: 'GET' });
+      const orderRes = await fetchWithAuth('/api/v1/order/count', { method: 'GET' });
+      setCounts({
+        totalProducts: Number(productRes?.data ?? 0),
+        totalUsers: Number(userRes?.data ?? 0),
+        totalOrders: Number(orderRes?.data ?? 0),
+      });
+      const res = await fetchWithAuth('/api/v1/order/sale/summary', { method: 'GET' });
+      setSalesSummary({
+        totalSales: Number(res?.data?.totalSales ?? 0),
+        upcomingSales: Number(res?.data?.upcomingSales ?? 0),
+      });
+    } catch (err) {
+      setCounts({ totalUsers: 0, totalProducts: 0, totalOrders: 0 });
+      setSalesSummary({ totalSales: 0, upcomingSales: 0 });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Fetch counts from API
-    const fetchCounts = async () => {
-      try {
-        const productRes = await fetchWithAuth('/api/v1/products/count', { method: 'GET' });
-        const userRes = await fetchWithAuth('/api/v1/users/count', { method: 'GET' });
-        const orderRes = await fetchWithAuth('/api/v1/order/count', { method: 'GET' });
-
-        setCounts({
-          totalProducts: Number(productRes?.data ?? 0),
-          totalUsers: Number(userRes?.data ?? 0),
-          totalOrders: Number(orderRes?.data ?? 0),
-        });
-      } catch (err) {
-        setCounts({ totalUsers: 0, totalProducts: 0, totalOrders: 0 });
-      }
-    };
-
-    // Fetch sales summary from API
-    const fetchSalesSummary = async () => {
-      try {
-        const res = await fetchWithAuth('/api/v1/order/sale/summary', { method: 'GET' });
-        setSalesSummary({
-          totalSales: Number(res?.data?.totalSales ?? 0),
-          upcomingSales: Number(res?.data?.upcomingSales ?? 0),
-        });
-      } catch (err) {
-        setSalesSummary({ totalSales: 0, upcomingSales: 0 });
-      }
-    };
-
-    fetchCounts();
-    fetchSalesSummary();
+    fetchAllStats(); // Only once on mount
   }, [fetchWithAuth]);
 
   const periodOptions: { value: FilterPeriod; label: string }[] = [
@@ -71,8 +68,17 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-gray-600">
-          Welcome back! Here's what's happening with your store today.
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Welcome back! Here's what's happening with your store today.
+          </div>
+          <button
+            onClick={fetchAllStats}
+            disabled={loading}
+            className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
       </div>
 
