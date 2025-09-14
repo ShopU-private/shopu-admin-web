@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import CreateProduct from './CreateProduct';
 import { formatPrice } from '../../utils/formatter';
 import { ProductListResponse } from '../../types/Product';
+import { useNavigate } from 'react-router-dom';
 
 const PAGE_SIZE = 20;
 
@@ -17,10 +17,10 @@ const Products: React.FC = () => {
   const { fetchWithAuth } = useAuth();
   const [products, setProducts] = useState<ProductListResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState<'list' | 'create'>('list');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -44,16 +44,12 @@ const Products: React.FC = () => {
     product.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (view === 'create') {
-    return <CreateProduct onBack={() => setView('list')} />;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Products</h1>
         <button
-          onClick={() => setView('create')}
+          onClick={() => navigate('/createProducts')}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />

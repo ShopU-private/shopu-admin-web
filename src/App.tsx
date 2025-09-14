@@ -10,6 +10,8 @@ import Products from './components/Products/Products';
 import Orders from './components/Orders/Orders';
 import Coupons from './components/Offers/Coupons';
 import GiftVouchers from './components/Offers/GiftVouchers';
+import SearchOrder from './components/Orders/SearchOrder';
+import CreateProduct from './components/Products/CreateProduct';
 
 function App() {
   const [isMobile, setIsMobile] = useState(false);
@@ -61,7 +63,9 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/users" element={<Users />} />
                     <Route path="/products" element={<Products />} />
+                    <Route path="/createProducts" element={<CreateProduct />} />
                     <Route path="/orders" element={<Orders />} />
+                    <Route path="/searchOrder" element={<SearchOrder />} />
                     <Route path="/offers" element={<Navigate to="/offers/coupons" replace />} />
                     <Route path="/offers/coupons" element={<Coupons />} />
                     <Route path="/offers/gift-vouchers" element={<GiftVouchers />} />

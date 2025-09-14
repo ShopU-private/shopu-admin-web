@@ -1,27 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatPrice } from '../../utils/formatter';
 import OrderCreate from './OrderCreate'
-import { OrderListResponse } from '../../types/order';
+import { OrderListResponse, OrderStatus } from '../../types/order';
+import { useNavigate } from 'react-router-dom';
+import OrderCard from './OrderCard';
 
 const PAGE_SIZE = 20;
 
 const Orders: React.FC = () => {
   const { fetchWithAuth } = useAuth();
   const [orders, setOrders] = useState<OrderListResponse[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'list' | 'create'>('list');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<string>('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrders = async () => {
       setLoading(true);
       try {
         const url = `/api/v1/order/all/web/${page}/${PAGE_SIZE}`;
-        const data = await fetchWithAuth(url, { method: 'GET' });
+        const data = await fetchWithAuth(url, {
+          method: 'GET',
+          queryParams: {
+            status: orderStatus || ''
+          }
+        });
         setOrders(data?.data?.content || []);
         setTotalPages(data?.data?.totalPages || 1);
       } catch (err) {
@@ -31,17 +38,7 @@ const Orders: React.FC = () => {
       }
     };
     fetchOrders();
-  }, [page, fetchWithAuth]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed'.toUpperCase() : return 'bg-yellow-50 text-orange-500';
-      case 'shipped'.toUpperCase(): return 'bg-purple-100 text-purple-800';
-      case 'delivered'.toUpperCase(): return 'bg-green-100 text-green-800';
-      case 'cancelled'.toUpperCase(): return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  }, [page, fetchWithAuth, orderStatus]);
 
   if (view === 'create') {
     return <OrderCreate onBack={() => setView('list')} />;
@@ -63,14 +60,13 @@ const Orders: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="relative">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search orders..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer flex items-center"
+              onClick={() => navigate('/searchOrder')}
+            >
+              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <span className="text-gray-500">Search orders...</span>
+            </div>
           </div>
         </div>
 
@@ -94,7 +90,19 @@ const Orders: React.FC = () => {
                     Total
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    <select
+                      value={orderStatus}
+                      onChange={e => {
+                        setOrderStatus(e.target.value);
+                        setPage(0);
+                      }}
+                      className="w-32 px-2 py-1 border border-gray-300 rounded-lg text-xs bg-white"
+                    >
+                      <option value="">Status</option>
+                      {Object.values(OrderStatus).map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
@@ -106,41 +114,7 @@ const Orders: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {order.orderId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.receiverName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.totalItem} item{order.totalItem !== 1 ? 's' : ''}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{formatPrice(order.orderAmount)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="text-green-600 hover:text-green-800">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-800">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <OrderCard key={order.id} order={order} />
                 ))}
               </tbody>
             </table>

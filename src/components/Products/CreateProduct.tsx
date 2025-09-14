@@ -3,16 +3,12 @@ import { Category, CompositionItem, DosageForm, ProductCreateRequest } from '../
 import { useAuth } from '../../contexts/AuthContext';
 import Snackbar from '../../utils/snackbar';
 
-interface CreateProductProps {
-  onBack: () => void;
-}
-
 const categoryOptions = Object.values(Category);
 const dosageFormOptions = Object.values(DosageForm);
 
 const initialComposition: CompositionItem = { name: '', strength: '' };
 
-const CreateProduct: React.FC<CreateProductProps> = ({ onBack }) => {
+const CreateProduct: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{
     message: string;
     type: "success" | "error" | "warning";
@@ -278,12 +274,6 @@ const handleSubmit = async (e: React.FormEvent) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <button
-          onClick={onBack}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          ←
-        </button>
         <h1 className="text-3xl font-bold text-gray-900">Create New Product</h1>
       </div>
 
@@ -698,13 +688,6 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Form Buttons */}
           <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onBack}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
             <button
               type="submit"
               disabled={isLoading}
