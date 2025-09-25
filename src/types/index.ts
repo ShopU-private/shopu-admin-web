@@ -1,16 +1,3 @@
-export interface Coupon {
-  id: string;
-  code: string;
-  description: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  minOrderValue: number;
-  maxUsage: number;
-  usedCount: number;
-  validFrom: string;
-  validTo: string;
-  status: 'active' | 'inactive';
-}
 
 export interface GiftVoucher {
   id: string;

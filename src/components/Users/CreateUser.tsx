@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 
 const phoneRegex = /^[6-9]\d{9}$/;
 
-interface CreateUserProps {
-  onBack: () => void;
-}
-
-const CreateUser: React.FC<CreateUserProps> = ({ onBack }) => {
+const CreateUser: React.FC = ({ }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -73,7 +69,6 @@ const CreateUser: React.FC<CreateUserProps> = ({ onBack }) => {
     setTimeout(() => {
       console.log('Creating user:', formData);
       setIsLoading(false);
-      onBack();
     }, 1000);
   };
 
@@ -88,16 +83,6 @@ const CreateUser: React.FC<CreateUserProps> = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={onBack}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-3xl font-bold text-gray-900">Create New User</h1>
-      </div>
-
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -368,7 +353,7 @@ const CreateUser: React.FC<CreateUserProps> = ({ onBack }) => {
           <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
             <button
               type="button"
-              onClick={onBack}
+              //onClick={onBack}
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel

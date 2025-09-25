@@ -1,262 +1,171 @@
-import React, { useState, useRef } from 'react';
-import { Category, CompositionItem, DosageForm, ProductCreateRequest } from '../../types/Product';
+import React, { useEffect, useState, useRef } from 'react';
+import { Category, DosageForm, CompositionItem, Product } from '../../types/Product'; // Ensure Product is imported
 import { useAuth } from '../../contexts/AuthContext';
+import { useLocation } from "react-router-dom";
 import { uploadToCloudinary } from '../../services/CloudinaryService';
 
 const categoryOptions = Object.values(Category);
 const dosageFormOptions = Object.values(DosageForm);
-
 const initialComposition: CompositionItem = { name: '', strength: '' };
 
-const CreateProduct: React.FC = () => {
 
-  const [formData, setFormData] = useState<{
-    name: string;
-    brand: string;
-    manufacturerName: string;
-    category: string;
-    dosageForm: string;
-    packSize: string;
-    prescriptionRequired: boolean;
-    description: string;
-    ingredients: string;
-    price: number;
-    stock: number;
-    images: string[]; // Explicitly type as string[]
-    composition: CompositionItem[];
-    strength: string;
-    uses: string;
-    benefits: string;
-    howToUse: string;
-    sideEffects: string;
-    precautions: string;
-    safetyAdvice: string;
-    safetyInformation: string;
-    storageInfo: string;
-    disclaimer: string;
-    hsnCode: string;
-    manufacturerDetails: string;
-    countryOfOrigin: string;
-    expiryDate: string;
-    manufacturingDate: string;
-    discount: number;
-  }>({
-    name: '',
-    brand: '',
-    manufacturerName: '',
-    category: '',
-    dosageForm: '',
-    packSize: '',
-    prescriptionRequired: false,
-    description: '',
-    ingredients: '',
-    price: 0,
-    stock: 0,
-    images: [],
-    composition: [],
-    strength: '',
-    uses: '',
-    benefits: '',
-    howToUse: '',
-    sideEffects: '',
-    precautions: '',
-    safetyAdvice: '',
-    safetyInformation: '',
-    storageInfo: '',
-    disclaimer: '',
-    hsnCode: '',
-    manufacturerDetails: '',
-    countryOfOrigin: '',
-    expiryDate: '',
-    manufacturingDate: '',
-    discount: 0,
-  });
-  const [isLoading, setIsLoading] = useState(false);
+const UpdateProduct: React.FC = () => {
+  const { fetchWithAuth } = useAuth();
+  const location = useLocation();
+  const { product } = location.state as { product: Product };
+  
+  // State is now typed as a partial Product, initialized to null
+  const [formData, setFormData] = useState<Partial<Product> | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // For submission loading state
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { fetchWithAuth } = useAuth();
+  const canAddComposition = product.category !== Category.HEALTHCARE;
 
-  // Composition logic
-  const canAddComposition = formData.category !== Category.HEALTHCARE;
+  // 2. useEffect now syncs the form state with the product prop
+  useEffect(() => {
+    if (product) {
+      // Initialize form data from the product prop
+      setFormData({
+        ...product,
+        // Provide default empty values for optional fields to ensure controlled inputs
+        discount: product.discount ?? 0,
+        images: product.images ?? [],
+        composition: product.composition ?? [],
+        uses: product.uses ?? '',
+        benefits: product.benefits ?? '',
+        howToUse: product.howToUse ?? '',
+        sideEffects: product.sideEffects ?? '',
+        precautions: product.precautions ?? '',
+        safetyAdvice: product.safetyAdvice ?? '',
+        safetyInformation: product.safetyInformation ?? '',
+        storageInfo: product.storageInfo ?? '',
+        disclaimer: product.disclaimer ?? '',
+        hsnCode: product.hsnCode ?? '',
+        manufacturerDetails: product.manufacturerDetails ?? '',
+        countryOfOrigin: product.countryOfOrigin ?? '',
+        manufacturingDate: product.manufacturingDate ?? '',
+        expiryDate: product.expiryDate ?? '',
+        strength: product.strength ?? ''
+      });
+    } else {
+      setFormData(null); // Clear form if no product is provided
+    }
+  }, [product]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
+    if (!formData) return;
     const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      // Type assertion to HTMLInputElement for checkbox
-      setFormData((prev) => ({
+    setFormData((prev) => ({
+      ...prev!,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setSelectedFiles((prev) => [
         ...prev,
-        [name]: (e.target as HTMLInputElement).checked
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value
-      }));
+        ...Array.from(files).filter(
+          (file) => !prev.some((f) => f.name === file.name && f.size === file.size)
+        ),
+      ]);
     }
   };
 
-  const handleCompositionChange = (idx: number, field: keyof CompositionItem, value: string) => {
-    const newCompositions = formData.composition.map((item, i) =>
-      i === idx ? { ...item, [field]: value } : item
-    );
+  const handleUploadImages = async () => {
+    if (selectedFiles.length === 0) return;
+    setUploading(true);
+    const uploadedUrls: string[] = [];
+
+    for (const file of selectedFiles) {
+      const url = await uploadToCloudinary(file, "product");
+      if (url) uploadedUrls.push(url);
+    }
+
     setFormData((prev) => ({
-      ...prev,
+      ...prev!,
+      images: [...(prev?.images ?? []), ...uploadedUrls],
+    }));
+    setSelectedFiles([]);
+    setUploading(false);
+  };
+  
+const handleRemoveImage = (idx: number) => {
+  if (!formData) return;
+  setFormData((prev) => ({
+    ...prev!,
+    images: (prev!.images || []).filter((_, i) => i !== idx),
+  }));
+};
+
+  const handleCompositionChange = (idx: number, field: keyof CompositionItem, value: string) => {
+    if (!formData) return;
+    const newCompositions = formData.composition?.map((item, i) =>
+      i === idx ? { ...item, [field]: value } : item
+    ) ?? [];
+    setFormData(prev => ({
+      ...prev!,
       composition: newCompositions
     }));
   };
 
   const addCompositionField = () => {
-    setFormData((prev) => ({
-      ...prev,
-      composition: [...prev.composition, { ...initialComposition }]
+    if (!formData) return;
+    setFormData(prev => ({
+      ...prev!,
+      composition: [
+        ...(Array.isArray(prev?.composition) ? prev!.composition : []),
+        { ...initialComposition }
+      ]
     }));
   };
 
   const removeCompositionField = (idx: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      composition: prev.composition.filter((_, i) => i !== idx)
+    if (!formData) return;
+    setFormData(prev => ({
+      ...prev!,
+      composition: prev!.composition?.filter((_, i) => i !== idx) ?? []
     }));
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-
-  // Validation: check required fields
-  if (
-    !formData.name ||
-    !formData.manufacturerName ||
-    !formData.category ||
-    !formData.dosageForm ||
-    !formData.packSize ||
-    formData.prescriptionRequired === undefined ||
-    !formData.description ||
-    !formData.ingredients ||
-    !formData.price ||
-    !formData.discount ||
-    !formData.stock
-  ) {
-    alert("Please fill all required fields before submitting.");
-    setIsLoading(false);
-    return;
-  }
-  
-  if(selectedFiles.length > 0){
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData) return;
+    if(selectedFiles.length > 0){
       alert("Image not uploaded. Please upload image first");
       return;
     }
-  // Prepare request body
-  const requestBody: ProductCreateRequest = {
-    name: formData.name,
-    brand: formData.brand,
-    manufacturerName: formData.manufacturerName,
-    category: formData.category,
-    dosageForm: formData.dosageForm,
-    packSize: formData.packSize,
-    prescriptionRequired: formData.prescriptionRequired,
-    description: formData.description,
-    composition: formData.composition,
-    ingredients: formData.ingredients,
-    uses: formData.uses,
-    benefits: formData.benefits,
-    howToUse: formData.howToUse,
-    sideEffects: formData.sideEffects,
-    precautions: formData.precautions,
-    safetyAdvice: formData.safetyAdvice,
-    safetyInformation: formData.safetyInformation,
-    storageInfo: formData.storageInfo,
-    disclaimer: formData.disclaimer,
-    hsnCode: formData.hsnCode,
-    manufacturerDetails: formData.manufacturerDetails,
-    price: Number(formData.price),
-    discount: Number(formData.discount),
-    images: formData.images,
-    stock: Number(formData.stock),
-  };
-
-  try {
-    const res = await fetchWithAuth("/api/v1/products/add", {
-      method: "POST",
-      body: requestBody,
-    });
-    if (res?.success || res?.status === 201) {
-    } else {
-      alert(res?.message || "Failed to create product.");
-    }
-  } catch (err) {
-    alert("Error creating product.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      setSelectedFiles(prevFiles => [
-        ...prevFiles,
-        ...Array.from(files).filter(
-          file => !prevFiles.some(f => f.name === file.name && f.size === file.size)
-        )
-      ]);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      setSelectedFiles(prevFiles => [
-        ...prevFiles,
-        ...Array.from(files).filter(
-          file => !prevFiles.some(f => f.name === file.name && f.size === file.size)
-        )
-      ]);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-    const handleUploadImages = async () => {
-      if (selectedFiles.length === 0) return;
-      setUploading(true);
-      const uploadedUrls: string[] = [];
-  
-      for (const file of selectedFiles) {
-        const url = await uploadToCloudinary(file, "product");
-        if (url) uploadedUrls.push(url);
+    setIsLoading(true);
+    try {
+      // The formData state now includes the 'id' from the product prop.
+      const res = await fetchWithAuth('/api/v1/products/update-product', {
+        method: 'PUT',
+        body: formData
+      });
+      if (res?.success || res?.status === 200 || res?.status === 201) {
+        alert('Product updated successfully!');
+      } else {
+        alert(res?.message || 'Failed to update product.');
       }
-  
-      setFormData((prev) => ({
-        ...prev!,
-        images: [...(prev?.images ?? []), ...uploadedUrls],
-      }));
-      setSelectedFiles([]);
-      setUploading(false);
-    };
-
-  const handleRemoveImage = (idx: number) => {
-    const newUrls = uploadedImageUrls.filter((_, i) => i !== idx);
-    setUploadedImageUrls(newUrls);
-    setFormData(prev => ({
-      ...prev,
-      images: newUrls
-    }));
+    } catch (err) {
+      alert('Error updating product.');
+    } finally {
+      setIsLoading(false);
+    }
   };
+  
+  
+  // Display a loading state if formData hasn't been initialized from the prop yet
+  if (!formData) {
+    return <div className="p-8 text-center text-gray-500">Loading product details...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <h1 className="text-3xl font-bold text-gray-900">Create New Product</h1>
-      </div>
-
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -270,7 +179,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter product name"
               />
             </div>
             <div>
@@ -278,11 +186,10 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="brand"
-                value={formData.brand}
+                value={formData.brand || ""}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter brand"
               />
             </div>
             <div>
@@ -294,7 +201,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter manufacturer name"
               />
             </div>
             <div>
@@ -306,7 +212,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
-                <option value="">Select category</option>
                 {categoryOptions.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -316,12 +221,11 @@ const handleSubmit = async (e: React.FormEvent) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Dosage Form *</label>
               <select
                 name="dosageForm"
-                value={formData.dosageForm}
+                value={formData.dosageForm || ""}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
-                <option value="">Select dosage form</option>
                 {dosageFormOptions.map((form) => (
                   <option key={form} value={form}>{form}</option>
                 ))}
@@ -336,7 +240,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter pack size"
+              />
+            </div>
+            {/* 3. Added Strength field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Strength *</label>
+              <input
+                type="text"
+                name="strength"
+                value={formData.strength || ""}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="e.g., 500mg"
               />
             </div>
             <div>
@@ -354,12 +270,11 @@ const handleSubmit = async (e: React.FormEvent) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
               <textarea
                 name="description"
-                value={formData.description}
+                value={formData.description || ""}
                 onChange={handleChange}
                 required
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter product description"
               />
             </div>
             <div>
@@ -367,11 +282,10 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="ingredients"
-                value={formData.ingredients}
+                value={formData.ingredients || ""}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter ingredients"
               />
             </div>
             <div>
@@ -384,7 +298,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 required
                 min={0}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="0"
               />
             </div>
             <div>
@@ -397,7 +310,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 required
                 step="0.01"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter discount"
               />
             </div>
             <div>
@@ -409,33 +321,31 @@ const handleSubmit = async (e: React.FormEvent) => {
                 onChange={handleChange}
                 step="0.01"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter discount"
               />
             </div>
           </div>
-
-          {/* Optional fields (can be expanded as needed) */}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Optional fields */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Uses</label>
               <input
                 type="text"
                 name="uses"
-                value={formData.uses}
+                value={formData.uses ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter uses"
               />
             </div>
-            <div>
+            {/* ... other optional fields like benefits, howToUse, etc. ... */}
+             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Benefits</label>
               <input
                 type="text"
                 name="benefits"
-                value={formData.benefits}
+                value={formData.benefits ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter benefits"
               />
             </div>
             <div>
@@ -443,10 +353,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="howToUse"
-                value={formData.howToUse}
+                value={formData.howToUse ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter how to use"
               />
             </div>
             <div>
@@ -454,10 +363,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="sideEffects"
-                value={formData.sideEffects}
+                value={formData.sideEffects ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter side effects"
               />
             </div>
             <div>
@@ -465,10 +373,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="precautions"
-                value={formData.precautions}
+                value={formData.precautions ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter precautions"
               />
             </div>
             <div>
@@ -476,10 +383,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="safetyAdvice"
-                value={formData.safetyAdvice}
+                value={formData.safetyAdvice ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter safety advice"
               />
             </div>
             <div>
@@ -487,10 +393,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="safetyInformation"
-                value={formData.safetyInformation}
+                value={formData.safetyInformation ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter safety information"
               />
             </div>
             <div>
@@ -498,10 +403,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="storageInfo"
-                value={formData.storageInfo}
+                value={formData.storageInfo ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter storage info"
               />
             </div>
             <div>
@@ -509,10 +413,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="disclaimer"
-                value={formData.disclaimer}
+                value={formData.disclaimer ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter disclaimer"
               />
             </div>
             <div>
@@ -520,10 +423,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="hsnCode"
-                value={formData.hsnCode}
+                value={formData.hsnCode ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter HSN code"
               />
             </div>
             <div>
@@ -531,10 +433,32 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="manufacturerDetails"
-                value={formData.manufacturerDetails}
+                value={formData.manufacturerDetails ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter manufacturer details"
+              />
+            </div>
+            {/* 3. Added Date and Country fields */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Manufacturing Date</label>
+              <input
+                type="text"
+                name="manufacturingDate"
+                value={formData.manufacturingDate ?? ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="YYYY-MM-DD"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+              <input
+                type="text"
+                name="expiryDate"
+                value={formData.expiryDate ?? ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="YYYY-MM-DD"
               />
             </div>
             <div>
@@ -542,75 +466,58 @@ const handleSubmit = async (e: React.FormEvent) => {
               <input
                 type="text"
                 name="countryOfOrigin"
-                value={formData.countryOfOrigin}
+                value={formData.countryOfOrigin ?? ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="Enter country of origin"
               />
             </div>
           </div>
-
-          {/* Image Upload Section */}
+          
+          {/* Image Upload Section (unchanged) */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
-            <div
-              className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer bg-gray-50"
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={handleFileSelect}
-              />
-              <span className="text-gray-500 mb-2">Drag & drop images here, or click to select</span>
-              {selectedFiles.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedFiles.map((file, idx) => (
-                    <div key={idx} className="relative flex flex-col items-center">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`preview-${idx}`}
-                        className="w-20 h-20 object-cover rounded-lg mb-1"
-                      />
-                      {/* <span className="text-xs text-gray-600">{file.name}</span> */}
-                      <button
-                        type="button"
-                        style={{ position: 'absolute', top: 0, right: 0 }}
-                        className="bg-red-600 text-white rounded-full px-2 py-1 text-xs"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== idx));
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+            <div className="flex flex-wrap gap-2 mb-2">
+              {formData.images?.map((url, idx) => (
+                <div key={idx} className="relative flex flex-col items-center">
+                  <img src={url} alt={`product-img-${idx}`} className="w-20 h-20 object-cover rounded-lg mb-1" />
+                  <button
+                    type="button"
+                    className="bg-red-600 text-white rounded-full px-2 py-1 text-xs absolute top-0 right-0"
+                    onClick={() => handleRemoveImage(idx)}
+                  >
+                    ×
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
             <button
               type="button"
-              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              disabled={selectedFiles.length === 0 || uploading}
-              onClick={handleUploadImages}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={() => fileInputRef.current?.click()}
             >
-              {uploading ? 'Uploading...' : 'Upload Images'}
+              + Add More Image
             </button>
-            {uploadedImageUrls.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {uploadedImageUrls.map((url, idx) => (
-                  <div key={idx} className="relative">
-                    <img src={url} alt={`uploaded-${idx}`} className="w-20 h-20 object-cover rounded-lg" />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
+            />
+            {selectedFiles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedFiles.map((file, idx) => (
+                  <div key={idx} className="relative flex flex-col items-center">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`preview-${idx}`}
+                      className="w-20 h-20 object-cover rounded-lg mb-1"
+                    />
                     <button
                       type="button"
-                      className="absolute top-0 right-0 bg-red-600 text-white rounded-full px-2 py-1 text-xs"
-                      onClick={() => handleRemoveImage(idx)}
+                      className="bg-red-600 text-white rounded-full px-2 py-1 text-xs absolute top-0 right-0"
+                      onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
                     >
                       ×
                     </button>
@@ -618,10 +525,80 @@ const handleSubmit = async (e: React.FormEvent) => {
                 ))}
               </div>
             )}
+            {selectedFiles.length != 0
+                ? <button
+              type="button"
+              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              disabled={selectedFiles.length === 0 || uploading}
+              onClick={handleUploadImages}
+            >
+              {uploading ? 'Uploading...' : 'Upload Images'}
+            </button>
+            : <div></div>
+            }
           </div>
 
-          {/* Composition Section - after images */}
+          {/* Composition Section (unchanged) */}
           <div className="pt-6 border-t border-gray-200">
+            <h2 className="text-lg font-semibold mb-4">Composition</h2>
+            <button
+                type="button"
+                onClick={addCompositionField}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mb-4"
+                disabled={formData.category === Category.HEALTHCARE}
+              >
+                + Add Composition Item
+            </button>
+            {!canAddComposition && (
+                <div className="text-sm text-gray-500 mb-2">Composition is not required for Healthcare category.</div>)}
+            {formData.composition?.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2 mb-2">
+                <input
+                  type="text"
+                  value={item.name}
+                  onChange={e => handleCompositionChange(idx, 'name', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Name"
+                />
+                <input
+                  type="text"
+                  value={item.strength}
+                  onChange={e => handleCompositionChange(idx, 'strength', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Strength"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeCompositionField(idx)}
+                  className="px-3 py-2 text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Form Buttons (unchanged) */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+            <button
+              type="submit"
+              disabled={isLoading}
+              onClick={handleSubmit}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+            >
+              <span>{isLoading ? 'Updating...' : 'Update Product'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default UpdateProduct;
+
+/*
+<div className="pt-6 border-t border-gray-200">
             <h2 className="text-lg font-semibold mb-4">Composition</h2>
             <div>
               <button
@@ -635,7 +612,8 @@ const handleSubmit = async (e: React.FormEvent) => {
               {!canAddComposition && (
                 <div className="text-sm text-gray-500 mb-2">Composition is not required for Healthcare category.</div>
               )}
-              {formData.composition.map((item, idx) => (
+              { formData.composition != null ?
+                formData.composition.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-2 mb-2">
                   <input
                     type="text"
@@ -662,26 +640,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     Remove
                   </button>
                 </div>
-              ))}
+              )): <div></div> }
             </div>
           </div>
-
-          {/* Form Buttons */}
-          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              onClick={handleSubmit}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
-            >
-              <span>{isLoading ? 'Creating...' : 'Create Product'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-export default CreateProduct;
+*/

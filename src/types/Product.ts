@@ -78,38 +78,46 @@ export enum DosageForm {
 
 export interface Product {
   id: string;
-  name: string; //->
-  brand: string; //->
-  manufacturerName: string; //->
-  category: string; //->
-  dosageForm: DosageForm; //->
-  strength?: string; //->>
-  packSize: string; //->
-  prescriptionRequired: boolean; //->>
-  description: string; //->
-  composition?: CompositionItem[]; //->>
-  ingredients: string; //->
-  uses?: string; //->
-  benefits?: string; //->
-  howToUse?: string; //->
-  sideEffects?: string; //->>
-  precautions?: string; //->>
-  safetyAdvice?: string; //->
-  safetyInformation?: string; //->
-  storageInfo?: string; //->
-  disclaimer?: string; //->
-  hsnCode?: string; //->
-  //manufacturerDetails?: string;
-  //countryOfOrigin?: string;
-  //expiryDate?: string; // ISO date string
-  manufacturingDate?: string; // ISO date string
-  price: number;
-  discount?: number;
-  //averageRating?: number;
-  //numberOfReviews?: number;
+  name: string;
+  brand: string | null;
+  manufacturerName: string;
+  category: Category;
+  dosageForm: DosageForm | null;
 
-  images: string[]; //->
-  stock?: number; //->
-  createdAt?: string; // ISO date-time string
-  updatedAt?: string; // ISO date-time string
+  // Quantity Attributes
+  strength: string | null;
+  packSize: string;
+  prescriptionRequired: boolean;
+
+  description: string | null;
+  composition: CompositionItem[] | CompositionItem[];
+  ingredients: string | null;
+
+  uses: string | null;
+  benefits: string | null;
+  howToUse: string | null;
+  sideEffects: string | null;
+  precautions: string | null;
+  safetyAdvice: string | null;
+  safetyInformation: string | null;
+
+  storageInfo: string | null;
+  disclaimer: string | null;
+
+  hsnCode: string | null;
+  manufacturerDetails: string | null;
+  countryOfOrigin: string | null;
+
+  expiryDate: string | null; // ISO date string (LocalDate se map hoga)
+  manufacturingDate: string | null;
+
+  price: number;
+  discount: number;
+  averageRating: number | 0;
+  numberOfReviews: number | 0;
+
+  images: string[] | string[];
+  stock: number | 0;
+  createdAt: string; // LocalDateTime → string
+  updatedAt: string | null;
 }

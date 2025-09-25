@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 // UserListResponse type for API response
 type UserListResponse = {
   id: string;
@@ -12,13 +14,9 @@ type UserListResponse = {
 };
 import { useAuth } from '../../contexts/AuthContext';
 
-interface UsersListProps {
-  onCreateUser: () => void;
-}
-
 const PAGE_SIZE = 20;
 
-const UsersList: React.FC<UsersListProps> = ({ onCreateUser }) => {
+const UsersList: React.FC = () => {
   const { fetchWithAuth } = useAuth();
   const [users, setUsers] = useState<UserListResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +24,7 @@ const UsersList: React.FC<UsersListProps> = ({ onCreateUser }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState<string | null>(null);
+  const navigate = useNavigate();
 
 
 useEffect(() => {
@@ -64,7 +63,7 @@ useEffect(() => {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Users</h1>
         <button
-          onClick={onCreateUser}
+          onClick={() => navigate('/createUser')}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
@@ -117,7 +116,11 @@ useEffect(() => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                  <tr
+                    key={user.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => {navigate('/userDetail', {state: { userData: user}})}}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
@@ -150,7 +153,10 @@ useEffect(() => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800">
+                        <button
+                          className="text-blue-600 hover:text-blue-800"
+                          onClick={() => {navigate('/userDetail', {state: { userData: user}})}}
+                        >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button

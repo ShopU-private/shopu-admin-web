@@ -19,7 +19,7 @@ const SearchOrder: React.FC = () => {
       setOrders([]);
       return;
     }
-    if(value.trim().length < 12 || value.trim().length > 20) {
+    if(value.trim().length < 13 || value.trim().length > 22) {
         return
     }
     setTypingTimeout(

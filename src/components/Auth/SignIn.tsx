@@ -142,7 +142,7 @@ const SignIn: React.FC = () => {
               </div>
             </div>
             {phoneNumber && (
-              <div className="text-center text-gray-500 text-xs mb-2">OTP sent to {phoneNumber}</div>
+              <div className="text-center text-gray-500 text-xs mb-1">OTP sent to your registered E-mail</div>
             )}
             {error && (
               <div className="text-red-600 text-sm text-center bg-red-50 py-2 px-4 rounded-lg">{error}</div>

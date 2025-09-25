@@ -56,7 +56,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_BASE_URL = "https://shopu-app-569380346480.europe-west1.run.app";
+const API_BASE_URL = "https://shopu-app-569380346480.europe-west1.run.app";//"http://localhost:8080";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
