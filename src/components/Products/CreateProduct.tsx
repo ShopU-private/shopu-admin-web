@@ -74,7 +74,6 @@ const CreateProduct: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { fetchWithAuth } = useAuth();
 
@@ -135,10 +134,8 @@ const handleSubmit = async (e: React.FormEvent) => {
     !formData.dosageForm ||
     !formData.packSize ||
     formData.prescriptionRequired === undefined ||
-    !formData.description ||
     !formData.ingredients ||
     !formData.price ||
-    !formData.discount ||
     !formData.stock
   ) {
     alert("Please fill all required fields before submitting.");
@@ -235,21 +232,21 @@ const handleSubmit = async (e: React.FormEvent) => {
       }
   
       setFormData((prev) => ({
-        ...prev!,
-        images: [...(prev?.images ?? []), ...uploadedUrls],
+        ...prev,
+        images: [...(prev.images ?? []), ...uploadedUrls],
       }));
       setSelectedFiles([]);
       setUploading(false);
     };
 
-  const handleRemoveImage = (idx: number) => {
-    const newUrls = uploadedImageUrls.filter((_, i) => i !== idx);
-    setUploadedImageUrls(newUrls);
-    setFormData(prev => ({
-      ...prev,
-      images: newUrls
-    }));
-  };
+const handleRemoveImage = (idx: number) => {
+  const newImages = formData.images.filter((_, i) => i !== idx);
+  setFormData((prev) => ({
+    ...prev,
+    images: newImages,
+  }));
+};
+
 
   return (
     <div className="space-y-6">
@@ -274,13 +271,12 @@ const handleSubmit = async (e: React.FormEvent) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Brand *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
               <input
                 type="text"
                 name="brand"
                 value={formData.brand}
                 onChange={handleChange}
-                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder="Enter brand"
               />
@@ -351,12 +347,11 @@ const handleSubmit = async (e: React.FormEvent) => {
               <span className="text-sm text-gray-600">Yes</span>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                required
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder="Enter product description"
@@ -602,9 +597,10 @@ const handleSubmit = async (e: React.FormEvent) => {
             >
               {uploading ? 'Uploading...' : 'Upload Images'}
             </button>
-            {uploadedImageUrls.length > 0 && (
+
+            {formData.images.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {uploadedImageUrls.map((url, idx) => (
+                {formData.images.map((url, idx) => (
                   <div key={idx} className="relative">
                     <img src={url} alt={`uploaded-${idx}`} className="w-20 h-20 object-cover rounded-lg" />
                     <button

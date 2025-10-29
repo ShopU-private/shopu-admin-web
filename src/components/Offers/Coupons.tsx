@@ -30,7 +30,7 @@ const Coupons: React.FC = () => {
 
   const getStatusColor = (status: boolean) => {
     return status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-  };
+  ;}
 
   return (
     <div className="space-y-6">

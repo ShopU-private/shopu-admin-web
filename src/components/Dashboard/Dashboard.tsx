@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import StatsCard from './StatsCard';
-import { mockStats, mockChartData } from '../../data/mockData';
+import { mockChartData } from '../../data/mockData';
 import { FilterPeriod } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 
